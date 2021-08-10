@@ -72,9 +72,9 @@ def getNameFromTitle(title):
     if rx is not None:
         shipName = shipName[: rx.span()[0]]
     # Get rid of 'Log of the' and similar
-    pIdx = shipName.find(' of the')
+    pIdx = shipName.find(' of the ')
     if pIdx > 0:
-        shipName = shipName[(pIdx+7) : ]
+        shipName = shipName[(pIdx+8) : ]
     pIdx = shipName.find(' of ')
     if pIdx > 0:
         shipName = shipName[(pIdx+4) : ]
@@ -163,9 +163,9 @@ def getStartDate(record):
 
 # Add the column titles if requested
 if args.title:
-    fw.write(
-        "Ship Name, Hull Symbol, Record Group, Series NAID, Record Entry, Container, "
-        + "StartDate, EndDate, Nara URL, #Images, Document URL\n"
+    fw.write("%-30s,%-12s,%-12s,%-12s,%-12s,%-20s,%-10s,%-10s,%-50s,%-12s,%s\n" % (
+        "Ship Name","Hull No.","Record Group","Series NAID","Record Entry","Container",
+        "StartDate","EndDate","Nara URL","#Images","Document URL")
     )
 
 
@@ -214,33 +214,33 @@ for filen in fileN:
 
         try:
             hullNo = getClassFromTitle(base["title"])
-            fw.write('"%-10s",' % stripC(hullNo))
+            fw.write('"%-12s",' % stripC(hullNo))
         except Exception:
-            fw.write("%-10s," % " ")
+            fw.write("%-12s," % " ")
 
         # Fixed data - record group and parent series
-        fw.write("%-5d," % args.rg)
-        fw.write("%-8d," % args.series)
+        fw.write("%-12d," % args.rg)
+        fw.write("%-12d," % args.series)
 
         # Record entry?
         try:
             vcn = base["variantControlNumberArray"]["variantControlNumber"]
             for entry in vcn:
                 if entry["type"]["naId"] == "10675882":
-                    fw.write("%-10s," % stripC(entry["number"]))
+                    fw.write("%-12s," % stripC(entry["number"]))
                     break
         except Exception as e:
             # sys.stderr.write(repr(e))
-            fw.write("%-10s," % " ")
+            fw.write("%-12s," % " ")
 
         # Container
         try:
             pFile = base["physicalOccurrenceArray"]["fileUnitPhysicalOccurrence"]
             cid = pFile["mediaOccurrenceArray"]["mediaOccurrence"]["containerId"]
-            fw.write("%-5s," % stripC(cid))
+            fw.write("%-20s," % stripC(cid))
         except Exception as e:
             # sys.stderr.write(repr(e))
-            fw.write("%-5s," % " ")
+            fw.write("%-20s," % " ")
 
         # dates
         try:
@@ -256,17 +256,17 @@ for filen in fileN:
 
         # Nara URL
         try:
-            fw.write("https://catalog.archives.gov/id/%s," % base["naId"])
+            fw.write("https://catalog.archives.gov/id/%-18s," % base["naId"])
         except Exception:
-            fw.write("%-40s," % " ")
+            fw.write("%-50s," % " ")
 
         # Count of images
         try:
             nImages = len(fj["objects"]["object"]) - 1  # Don't count the pdf
-            fw.write("%-5d," % nImages)
+            fw.write("%-12d," % nImages)
         except Exception as e:
             # sys.stderr.write(repr(e))
-            fw.write("%-5s," % " ")
+            fw.write("%-12s," % " ")
 
         # Get the pdf url, if there is one
         try:
@@ -281,8 +281,8 @@ for filen in fileN:
             if pdfU is not None:
                 fw.write("%s," % pdfU)
             else:
-                fw.write("%10s," % " ")
+                fw.write("%12s," % " ")
         except Exception:
-            fw.write("%10s," % " ")
+            fw.write("%12s," % " ")
         fw.write("\n")
     fd.close()
