@@ -1,0 +1,405 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Summarise records in CSV format &#8212; Information on ship logs in NARA&#39;s catalog</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Logs from the US Exploring Expedition" href="csv_series/US_exploring_expedition.html" />
+    <link rel="prev" title="Sample pretty-printer output (Yantic)" href="pretty_printed/Yantic.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="csv_series/US_exploring_expedition.html" title="Logs from the US Exploring Expedition"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="pretty_printed/Yantic.html" title="Sample pretty-printer output (Yantic)"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">NARA logbooks</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Summarise records in CSV format</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="summarise-records-in-csv-format">
+<h1>Summarise records in CSV format<a class="headerlink" href="#summarise-records-in-csv-format" title="Permalink to this headline">¶</a></h1>
+<p>This script will search for a particular set of records, and print out a summary of each in CSV format, for easy viewing in a spreadsheet.</p>
+<p>This won’t work well for arbitrary NARA records, but it should do the ship logbooks.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># Make a csv file, that matches Kevin&#39;s spreadsheet, from the TNA Archive dump</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">calendar</span> <span class="kn">import</span> <span class="n">monthrange</span>
+
+<span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">()</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--rg&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Record group&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+    <span class="s2">&quot;--subgroup&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Record group file&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span>
+<span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--series&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Series&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--match&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Filter&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--title&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">)</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+<span class="c1"># Write to stdout</span>
+<span class="n">fw</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span>
+
+<span class="c1"># Input files</span>
+<span class="n">fileN</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">filed</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/WW2_US_logs/US_TNA_Catalog/record-groups/rg_</span><span class="si">%03d</span><span class="s2">/&quot;</span> <span class="o">%</span> <span class="p">(</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;SCRATCH&quot;</span><span class="p">),</span>
+    <span class="n">args</span><span class="o">.</span><span class="n">rg</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">subgroup</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">fileN</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/rg_</span><span class="si">%03d</span><span class="s2">-</span><span class="si">%03d</span><span class="s2">.json&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filed</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">rg</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">subgroup</span><span class="p">))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">filed</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+        <span class="n">fileN</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">/</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filed</span><span class="p">,</span> <span class="n">fn</span><span class="p">))</span>
+
+<span class="c1"># Most of the work is in parsing the &#39;title&#39; field, which is a string containing</span>
+<span class="c1">#  the ship name, maybe class and number (&#39;DD-119&#39;), maybe date or date range, and</span>
+<span class="c1">#  maybe other stuff, in several different formats.</span>
+<span class="n">mnames</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="s2">&quot;january&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;february&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;march&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;april&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;may&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;june&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;july&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;august&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;september&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;october&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;november&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;december&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">getNameFromTitle</span><span class="p">(</span><span class="n">title</span><span class="p">):</span>
+    <span class="n">shipName</span> <span class="o">=</span> <span class="n">title</span>
+    <span class="c1"># If title contains &#39;:&#39; strip everything afterwards</span>
+    <span class="n">pIdx</span> <span class="o">=</span> <span class="n">shipName</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pIdx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[:</span> <span class="n">pIdx</span> <span class="p">]</span>
+    <span class="c1"># If title contains &#39;(&#39; strip everything afterwards</span>
+    <span class="n">pIdx</span> <span class="o">=</span> <span class="n">shipName</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;(&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pIdx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[:</span> <span class="n">pIdx</span> <span class="p">]</span>
+    <span class="c1"># If title contains a date, strip date and everything afterwards</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;\d+/\d+/&quot;</span><span class="p">,</span> <span class="n">shipName</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[:</span> <span class="n">rx</span><span class="o">.</span><span class="n">span</span><span class="p">()[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;- \w+ \d\d\d\d/&quot;</span><span class="p">,</span> <span class="n">shipName</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[:</span> <span class="n">rx</span><span class="o">.</span><span class="n">span</span><span class="p">()[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="c1"># Get rid of &#39;Log of the&#39; and similar</span>
+    <span class="n">pIdx</span> <span class="o">=</span> <span class="n">shipName</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39; of the &#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pIdx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[(</span><span class="n">pIdx</span><span class="o">+</span><span class="mi">8</span><span class="p">)</span> <span class="p">:</span> <span class="p">]</span>
+    <span class="n">pIdx</span> <span class="o">=</span> <span class="n">shipName</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39; of &#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pIdx</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="n">shipName</span><span class="p">[(</span><span class="n">pIdx</span><span class="o">+</span><span class="mi">4</span><span class="p">)</span> <span class="p">:</span> <span class="p">]</span>
+    <span class="c1"># Standardise on USS, so convert U.S.S to USS</span>
+    <span class="n">pIdx</span> <span class="o">=</span> <span class="n">shipName</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;U.S.S.&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pIdx</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">shipName</span> <span class="o">=</span> <span class="s2">&quot;USS </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">shipName</span><span class="p">[(</span><span class="n">pIdx</span><span class="o">+</span><span class="mi">6</span><span class="p">)</span> <span class="p">:</span> <span class="p">]</span>
+    <span class="k">return</span> <span class="n">shipName</span>
+
+
+<span class="k">def</span> <span class="nf">getClassFromTitle</span><span class="p">(</span><span class="n">title</span><span class="p">):</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;\((\w+-\d+)\)&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">classN</span> <span class="o">=</span> <span class="n">rx</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">classN</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Class not found&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">getStartDateFromTitle</span><span class="p">(</span><span class="n">title</span><span class="p">):</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;(\d+)/(\d+)/(\d+)\D+(\d+)/(\d+)/(\d+)&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">2</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">1</span><span class="p">])]</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;- \w+ (\d\d\d\d)/&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mmatch</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mnames</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">title</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">mnames</span><span class="p">[</span><span class="n">count</span><span class="p">])</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">mmatch</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">mmatch</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Date not found&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">getEndDateFromTitle</span><span class="p">(</span><span class="n">title</span><span class="p">):</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;(\d+)/(\d+)/(\d+)\D+(\d+)/(\d+)/(\d+)&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">5</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">3</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">4</span><span class="p">])]</span>
+    <span class="n">rx</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s2">&quot;- \w+ (\d\d\d\d)/&quot;</span><span class="p">,</span> <span class="n">title</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">rx</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">mmatch</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="k">for</span> <span class="n">count</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">mnames</span><span class="p">)):</span>
+            <span class="k">if</span> <span class="n">title</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">mnames</span><span class="p">[</span><span class="n">count</span><span class="p">])</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">mmatch</span> <span class="o">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="k">break</span>
+        <span class="k">return</span> <span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">mmatch</span><span class="p">,</span> <span class="n">monthrange</span><span class="p">(</span><span class="n">rx</span><span class="o">.</span><span class="n">groups</span><span class="p">()[</span><span class="mi">0</span><span class="p">],</span> <span class="n">mmatch</span><span class="p">)[</span><span class="mi">1</span><span class="p">]]</span>
+    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Date not found&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">getEndDate</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ed</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;coverageDates&quot;</span><span class="p">][</span><span class="s2">&quot;coverageEndDate&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;logicalDate&quot;</span> <span class="ow">in</span> <span class="n">ed</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][:</span><span class="mi">4</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][</span><span class="mi">5</span><span class="p">:</span><span class="mi">7</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">]),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;month&quot;</span><span class="p">]),</span>
+                <span class="n">monthrange</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;month&quot;</span><span class="p">]))[</span><span class="mi">1</span><span class="p">],</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">getEndDateFromTitle</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">])</span>
+
+
+<span class="k">def</span> <span class="nf">getStartDate</span><span class="p">(</span><span class="n">record</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ed</span> <span class="o">=</span> <span class="n">record</span><span class="p">[</span><span class="s2">&quot;coverageDates&quot;</span><span class="p">][</span><span class="s2">&quot;coverageStartDate&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">&quot;logicalDate&quot;</span> <span class="ow">in</span> <span class="n">ed</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][:</span><span class="mi">4</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][</span><span class="mi">5</span><span class="p">:</span><span class="mi">7</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;logicalDate&quot;</span><span class="p">][</span><span class="mi">8</span><span class="p">:</span><span class="mi">10</span><span class="p">]),</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">(</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;year&quot;</span><span class="p">]),</span>
+                <span class="nb">int</span><span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="s2">&quot;month&quot;</span><span class="p">]),</span>
+                <span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">getStartDateFromTitle</span><span class="p">(</span><span class="n">record</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">])</span>
+
+
+<span class="c1"># Add the column titles if requested</span>
+<span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">title</span><span class="p">:</span>
+    <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-30s</span><span class="s2">,</span><span class="si">%-12s</span><span class="s2">,</span><span class="si">%-12s</span><span class="s2">,</span><span class="si">%-12s</span><span class="s2">,</span><span class="si">%-12s</span><span class="s2">,</span><span class="si">%-20s</span><span class="s2">,</span><span class="si">%-10s</span><span class="s2">,</span><span class="si">%-10s</span><span class="s2">,</span><span class="si">%-50s</span><span class="s2">,</span><span class="si">%-12s</span><span class="s2">,</span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+        <span class="s2">&quot;Ship Name&quot;</span><span class="p">,</span><span class="s2">&quot;Hull No.&quot;</span><span class="p">,</span><span class="s2">&quot;Record Group&quot;</span><span class="p">,</span><span class="s2">&quot;Series NAID&quot;</span><span class="p">,</span><span class="s2">&quot;Record Entry&quot;</span><span class="p">,</span><span class="s2">&quot;Container&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;StartDate&quot;</span><span class="p">,</span><span class="s2">&quot;EndDate&quot;</span><span class="p">,</span><span class="s2">&quot;Nara URL&quot;</span><span class="p">,</span><span class="s2">&quot;#Images&quot;</span><span class="p">,</span><span class="s2">&quot;Document URL&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># Get rid of any commas (bad in CSV)</span>
+<span class="k">def</span> <span class="nf">stripC</span><span class="p">(</span><span class="n">inpS</span><span class="p">):</span>
+    <span class="n">opS</span> <span class="o">=</span> <span class="n">inpS</span>
+    <span class="k">while</span> <span class="n">opS</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">opS</span> <span class="o">=</span> <span class="n">opS</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">opS</span>
+
+
+<span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">fileN</span><span class="p">:</span>
+    <span class="n">fd</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">line</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">break</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;,&quot;</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">match</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">match</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">line</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;{[&quot;</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span>
+        <span class="k">if</span> <span class="n">line</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;]}&quot;</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">line</span><span class="p">[:</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fj</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">base</span> <span class="o">=</span> <span class="n">fj</span><span class="p">[</span><span class="s2">&quot;description&quot;</span><span class="p">][</span><span class="s2">&quot;fileUnit&quot;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s2">&quot;parentSeries&quot;</span><span class="p">][</span><span class="s2">&quot;naId&quot;</span><span class="p">])</span> <span class="o">!=</span> <span class="n">args</span><span class="o">.</span><span class="n">series</span><span class="p">:</span>
+                <span class="k">continue</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">shipName</span> <span class="o">=</span> <span class="n">getNameFromTitle</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">])</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-30s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">stripC</span><span class="p">(</span><span class="n">shipName</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-30s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">hullNo</span> <span class="o">=</span> <span class="n">getClassFromTitle</span><span class="p">(</span><span class="n">base</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">])</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&quot;</span><span class="si">%-12s</span><span class="s1">&quot;,&#39;</span> <span class="o">%</span> <span class="n">stripC</span><span class="p">(</span><span class="n">hullNo</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># Fixed data - record group and parent series</span>
+        <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12d</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">rg</span><span class="p">)</span>
+        <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12d</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">series</span><span class="p">)</span>
+
+        <span class="c1"># Record entry?</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vcn</span> <span class="o">=</span> <span class="n">base</span><span class="p">[</span><span class="s2">&quot;variantControlNumberArray&quot;</span><span class="p">][</span><span class="s2">&quot;variantControlNumber&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">vcn</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">][</span><span class="s2">&quot;naId&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;10675882&quot;</span><span class="p">:</span>
+                    <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">stripC</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;number&quot;</span><span class="p">]))</span>
+                    <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># sys.stderr.write(repr(e))</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># Container</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pFile</span> <span class="o">=</span> <span class="n">base</span><span class="p">[</span><span class="s2">&quot;physicalOccurrenceArray&quot;</span><span class="p">][</span><span class="s2">&quot;fileUnitPhysicalOccurrence&quot;</span><span class="p">]</span>
+            <span class="n">cid</span> <span class="o">=</span> <span class="n">pFile</span><span class="p">[</span><span class="s2">&quot;mediaOccurrenceArray&quot;</span><span class="p">][</span><span class="s2">&quot;mediaOccurrence&quot;</span><span class="p">][</span><span class="s2">&quot;containerId&quot;</span><span class="p">]</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">stripC</span><span class="p">(</span><span class="n">cid</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># sys.stderr.write(repr(e))</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-20s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># dates</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ed</span> <span class="o">=</span> <span class="n">getStartDate</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%04d</span><span class="s2">-</span><span class="si">%02d</span><span class="s2">-</span><span class="si">%02d</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ed</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ed</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%10s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">ed</span> <span class="o">=</span> <span class="n">getEndDate</span><span class="p">(</span><span class="n">base</span><span class="p">)</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%04d</span><span class="s2">-</span><span class="si">%02d</span><span class="s2">-</span><span class="si">%02d</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ed</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ed</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">ed</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%10s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># Nara URL</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;https://catalog.archives.gov/id/</span><span class="si">%-18s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">base</span><span class="p">[</span><span class="s2">&quot;naId&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-50s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># Count of images</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">nImages</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">fj</span><span class="p">[</span><span class="s2">&quot;objects&quot;</span><span class="p">][</span><span class="s2">&quot;object&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span>  <span class="c1"># Don&#39;t count the pdf</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12d</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="n">nImages</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="c1"># sys.stderr.write(repr(e))</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-12s</span><span class="s2">,&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+
+        <span class="c1"># Get the pdf url, if there is one</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">docs</span> <span class="o">=</span> <span class="n">fj</span><span class="p">[</span><span class="s2">&quot;objects&quot;</span><span class="p">][</span><span class="s2">&quot;object&quot;</span><span class="p">]</span>
+            <span class="n">pdfU</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+                <span class="n">a_url</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">][</span><span class="s2">&quot;@url&quot;</span><span class="p">]</span>
+                <span class="n">ftype</span> <span class="o">=</span> <span class="n">a_url</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s2">&quot;pdf&quot;</span><span class="p">:</span>
+                    <span class="n">pdfU</span> <span class="o">=</span> <span class="n">a_url</span>
+                    <span class="k">break</span>
+            <span class="k">if</span> <span class="n">pdfU</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">pdfU</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%12s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%12s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="s2">&quot; &quot;</span><span class="p">)</span>
+        <span class="n">fw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">fd</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/US_National_Archives_II.jpg" alt="Logo"/>
+            </a></p>
+<h3><a href="index.html">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="get_catalog.html">Download the full catalog</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pretty_print.html">Pretty-printer script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pretty_printed/Yantic.html">Pretty-printer sample output</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Logbook record summariser script</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/US_exploring_expedition.html">US Exploring Expedition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1801-1940.html">US Navy 1801-1940 (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1941_on.html">US Navy 1941 on (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Revenue%2BCoastguard.html">Revenue Cutters and Coastguard Vessels (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Coast%2BGeodetic.html">Coast and Geodetic survey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Logs%2BJournals_rg45.html">Officers logs and journals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/NPEE.html">North Pacific Exploring Expedition</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/Ship_logs_at_NARA">Get a copy</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/Ship_logs_at_NARA"
+           rel="nofollow">Github repository</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/Ship_logs_at_NARA/issues/new">raise an issue</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="csv_series/US_exploring_expedition.html" title="Logs from the US Exploring Expedition"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="pretty_printed/Yantic.html" title="Sample pretty-printer output (Yantic)"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">NARA logbooks</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Summarise records in CSV format</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>

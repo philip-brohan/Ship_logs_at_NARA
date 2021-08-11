@@ -1,0 +1,149 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ship logs at NARA &#8212; Information on ship logs in NARA&#39;s catalog</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Downloading the full catalog" href="get_catalog.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="get_catalog.html" title="Downloading the full catalog"
+             accesskey="N">next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">NARA logbooks</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Ship logs at NARA</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="ship-logs-at-nara">
+<h1>Ship logs at NARA<a class="headerlink" href="#ship-logs-at-nara" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference external" href="https://www.archives.gov">National Archives and Records Administration</a> (NARA, in the USA) hold an enormous number of historical records of value to climate research. Those holdings include many ship’s logbooks - many of which are available online as scanned images. I’d like to get a good picture of what logbook records are available from NARA.</p>
+<p>The NARA catalog is available online through a <a class="reference external" href="https://www.archives.gov/research/catalog/help/using.html">web interface</a> and this works well for finding and browsing individual logs (e.g. <a class="reference external" href="https://catalog.archives.gov/id/6919193">USS Jeannette in 1880</a>) but to look at records in bulk we need to go beyond a point-and-click interface. NARA support such advanced use by making their entire catalog database <a class="reference external" href="https://registry.opendata.aws/nara-national-archives-catalog/">available to download.</a></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="get_catalog.html">Download the full catalog</a></li>
+</ul>
+</div>
+<p>To use the catalog data we have to understand its structure, and it’s easy to study as each record is a single line of JSON (a text format) so we can read it directly. But it’s much easier if we pretty-print selected records to show the record structure explicitly.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pretty_print.html">Pretty-printer script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pretty_printed/Yantic.html">Pretty-printer sample output</a></li>
+</ul>
+</div>
+<p>With a clear idea of the record structure, we can then write code to make summaries of the records we are interested in, as spreadsheet (CSV) tables.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="to_csv.html">Logbook record summariser script</a></li>
+</ul>
+</div>
+<p>Then we can make summaries of selected sets of logbook records:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/US_exploring_expedition.html">US Exploring Expedition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1801-1940.html">US Navy 1801-1940 (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1941_on.html">US Navy 1941 on (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Revenue%2BCoastguard.html">Revenue Cutters and Coastguard Vessels (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Coast%2BGeodetic.html">Coast and Geodetic survey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Logs%2BJournals_rg45.html">Officers logs and journals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/NPEE.html">North Pacific Exploring Expedition</a></li>
+</ul>
+</div>
+<p>These are probably not all the logbook series at NARA - if you know of any others, <a class="reference internal" href="credits.html"><span class="doc">please let me know</span></a>. (I know of the <a class="reference external" href="https://catalog.archives.gov/id/7064413">Russian American Company logs</a>, but they are only catalogued as a series, not as individual logs.)</p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="credits.html">Authors and acknowledgements</a></li>
+</ul>
+</div>
+<p>This document is crown copyright (2021). It is published under the terms of the <a class="reference external" href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/2/">Open Government Licence</a>. Source code included is published under the terms of the <a class="reference external" href="https://opensource.org/licenses/BSD-2-Clause">BSD licence</a>. Catalog data used are taken from NARA and <a class="reference external" href="https://registry.opendata.aws/nara-national-archives-catalog/">licensed as US Government work.</a></p>
+</div>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="#">
+              <img class="logo" src="_static/US_National_Archives_II.jpg" alt="Logo"/>
+            </a></p>
+<h3><a href="#">Table of Contents</a></h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="get_catalog.html">Download the full catalog</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="pretty_print.html">Pretty-printer script</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pretty_printed/Yantic.html">Pretty-printer sample output</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="to_csv.html">Logbook record summariser script</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/US_exploring_expedition.html">US Exploring Expedition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1801-1940.html">US Navy 1801-1940 (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Navy_1941_on.html">US Navy 1941 on (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Revenue%2BCoastguard.html">Revenue Cutters and Coastguard Vessels (sample)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Coast%2BGeodetic.html">Coast and Geodetic survey</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/Logs%2BJournals_rg45.html">Officers logs and journals</a></li>
+<li class="toctree-l1"><a class="reference internal" href="csv_series/NPEE.html">North Pacific Exploring Expedition</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="how_to.html">How to reproduce or extend this work</a></li>
+<li class="toctree-l1"><a class="reference internal" href="credits.html">Authors and acknowledgements</a></li>
+</ul>
+<h3><a href="https://github.com/philip-brohan/Ship_logs_at_NARA">Get a copy</a></h3>
+
+<ul>
+<li><a href="https://github.com/philip-brohan/Ship_logs_at_NARA"
+           rel="nofollow">Github repository</a></li>
+</ul>
+
+<h3>Found a bug, or have a suggestion?</h3>
+
+Please <a href="https://github.com/philip-brohan/Ship_logs_at_NARA/issues/new">raise an issue</a>.
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="get_catalog.html" title="Downloading the full catalog"
+             >next</a> |</li>
+        <li class="nav-item nav-item-0"><a href="#">NARA logbooks</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Ship logs at NARA</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    </div>
+  </body>
+</html>
