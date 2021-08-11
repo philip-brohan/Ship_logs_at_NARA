@@ -78,7 +78,7 @@ def getNameFromTitle(title):
     pIdx = shipName.find(' of ')
     if pIdx > 0:
         shipName = shipName[(pIdx+4) : ]
-    # rationalise U.S.S to USS
+    # Standardise on USS, so convert U.S.S to USS
     pIdx = shipName.find('U.S.S.')
     if pIdx > -1:
         shipName = "USS %s" % shipName[(pIdx+6) : ]
@@ -86,9 +86,9 @@ def getNameFromTitle(title):
 
 
 def getClassFromTitle(title):
-    rx = re.search("\(\w+-\d+\)", title)
+    rx = re.search("\((\w+-\d+)\)", title)
     if rx is not None:
-        classN = rx.group()
+        classN = rx.group(1)
         return classN
     raise Exception("Class not found")
 
@@ -279,10 +279,10 @@ for filen in fileN:
                     pdfU = a_url
                     break
             if pdfU is not None:
-                fw.write("%s," % pdfU)
+                fw.write("%s" % pdfU)
             else:
-                fw.write("%12s," % " ")
+                fw.write("%12s" % " ")
         except Exception:
-            fw.write("%12s," % " ")
+            fw.write("%12s" % " ")
         fw.write("\n")
     fd.close()

@@ -28,7 +28,23 @@ With a clear idea of the record structure, we can then write code to make summar
 
    Logbook record summariser script <to_csv>
 
+Then we can make summaries of selected sets of logbook records:
 
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   US Exploring Expedition <csv_series/US_exploring_expedition>
+   US Navy 1801-1940 (sample) <csv_series/Navy_1801-1940>
+   US Navy 1941 on (sample) <csv_series/Navy_1941_on>
+   Revenue Cutters and Coastguard Vessels (sample) <csv_series/Revenue+Coastguard>
+   Coast and Geodetic survey <csv_series/Coast+Geodetic>
+   Officers logs and journals <csv_series/Logs+Journals_rg45>
+   North Pacific Exploring Expedition <csv_series/NPEE>
+
+These are probably not all the logbook series at NARA - if you know of any others, :doc:`please let me know <credits>`. (I know of the `Russian American Company logs <https://catalog.archives.gov/id/7064413>`_, but they are only catalogued as a series, not as individual logs.)
+
+|
 
 .. toctree::
    :titlesonly:

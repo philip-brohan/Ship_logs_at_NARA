@@ -1,0 +1,23 @@
+Logs from the US Navy, 1801-1940 (sample)
+=========================================
+
+Summary of the NARA logs from the US Navy up to 1940 (`Record Group 24 <https://catalog.archives.gov/id/353>`_, `Series 581208 <https://catalog.archives.gov/id/581208>`_).
+
+Produced by:
+
+.. code-block:: bash
+
+   to_csv.py --rg=24 --series=581208 --title
+
+|
+
+Only a sample of the output is given here (first 100 records, there are 1890 records in this series - too many to show this way).
+
+.. csv-table::
+    :header-rows: 1
+    :widths: 10 5 5 10 5 15 15 10 10 5 10
+    :file: Navy_pre_1940_sample.csv
+
+
+
+
